@@ -18,10 +18,10 @@ MIN_MARKET_CAP = 100000  # Minimum market cap in USD
 DEXSCREENER_API = "https://api.dexscreener.com/latest/dex"
 POCKET_UNIVERSE_API = "https://api.pocketuniverse.ai/v1/check_wash_trading"
 RUGCHECK_API = "https://api.rugcheck.xyz/v1/token_analysis"
-ETHERSCAN_API = "https://api.etherscan.io/api"
+SOLSCAN_API = "https://public-api.solscan.io"  # Solana blockchain explorer
 TELEGRAM_BOT_TOKEN = "7738691138:AAE6sQc4SZyVdGCKcTH7W29p1ciPorrsL0w"  # Your Telegram Bot Token
 TELEGRAM_CHAT_ID = "5979944526"  # Your Telegram Chat ID
-
+RUGCHECK_API_KEY = "YOUR_RUGCHECK_API_KEY"  # Replace with your Rugcheck API key
 
 # Initialize Telegram Bot
 telegram_bot = Bot(token=TELEGRAM_BOT_TOKEN)
@@ -32,16 +32,16 @@ def send_telegram_message(message):
 
 def fetch_token_data(token_address):
     """Fetch token data from DexScreener."""
-    url = f"{DEXSCREENER_API}/tokens/{token_address}"
+    url = f"{DEXSCREENER_API}/tokens/solana/{token_address}"
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()
     else:
         raise Exception(f"Failed to fetch token data: {response.status_code}")
 
-def fetch_pair_data(chain_id, pair_address):
+def fetch_pair_data(pair_address):
     """Fetch pair data from DexScreener."""
-    url = f"{DEXSCREENER_API}/pairs/{chain_id}/{pair_address}"
+    url = f"{DEXSCREENER_API}/pairs/solana/{pair_address}"
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()
@@ -81,27 +81,20 @@ def check_rugcheck(token_address):
         return False
 
 def check_bundled_supply(token_address):
-    """Check if the token's supply is bundled."""
-    params = {
-        "module": "account",
-        "action": "txlist",
-        "address": token_address,
-        "startblock": 0,
-        "endblock": 99999999,
-        "sort": "asc",
-        "apikey": "YOUR_ETHERSCAN_API_KEY"
-    }
-    response = requests.get(ETHERSCAN_API, params=params)
+    """Check if the token's supply is bundled (minted in a single transaction)."""
+    url = f"{SOLSCAN_API}/token/{token_address}"
+    response = requests.get(url)
     if response.status_code == 200:
-        transactions = response.json().get('result', [])
-        if len(transactions) == 1 and transactions[0]['input'].startswith("0x40c10f19"):
+        data = response.json()
+        # Check if the token was minted in a single transaction
+        if data.get('mintAuthority') == data.get('freezeAuthority'):
             return True
     return False
 
 def fetch_and_filter_data():
     """Fetch and filter data from DexScreener."""
-    # Example: Fetch top tokens on Ethereum
-    chain_id = "ethereum"
+    # Example: Fetch top tokens on Solana
+    chain_id = "solana"
     url = f"{DEXSCREENER_API}/tokens/{chain_id}"
     response = requests.get(url)
     if response.status_code == 200:
